@@ -1,0 +1,1387 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MANIC | Premium Clothing Store</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap"
+    rel="stylesheet" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pink: "#F29AAE",
+            "purple-light": "#C47BE4",
+            purple: "#7132CA",
+            indigo: "#301CA0",
+            dark: "#0F0B1E",
+          },
+          fontFamily: {
+            montserrat: ["Montserrat", "sans-serif"],
+            poppins: ["Poppins", "sans-serif"],
+          },
+          animation: {
+            float: "float 6s ease-in-out infinite",
+            "float-slow": "float 8s ease-in-out infinite",
+            "float-reverse": "float-reverse 7s ease-in-out infinite",
+            "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+          },
+          keyframes: {
+            float: {
+              "0%, 100%": { transform: "translateY(0) translateX(0)" },
+              "50%": { transform: "translateY(-20px) translateX(10px)" },
+            },
+            "float-reverse": {
+              "0%, 100%": { transform: "translateY(0) translateX(0)" },
+              "50%": { transform: "translateY(20px) translateX(-10px)" },
+            },
+            "pulse-glow": {
+              "0%, 100%": { opacity: 0.7 },
+              "50%": { opacity: 1 },
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --pink: #f29aae;
+      --purple-light: #c47be4;
+      --purple: #7132ca;
+      --indigo: #301ca0;
+      --dark: #0f0b1e;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: var(--dark);
+      color: white;
+      overflow-x: hidden;
+    }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, var(--indigo) 0%, var(--purple) 30%, var(--dark) 70%);
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, var(--pink), var(--purple-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-hover {
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .card-hover:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(113, 50, 202, 0.3);
+      border-color: rgba(242, 154, 174, 0.3);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .product-image {
+      transition: transform 0.5s ease;
+    }
+
+    .product-card:hover .product-image {
+      transform: scale(1.05);
+    }
+
+    .page-transition {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .page-transition.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .cart-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: var(--pink);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .floating-shape {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+      opacity: 0.3;
+      z-index: 0;
+    }
+
+    /* Admin / Form Styles */
+    .admin-input {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: white;
+      outline: none;
+      width: 100%;
+      font-family: "Poppins", sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .admin-input:focus {
+      border-color: var(--pink);
+      box-shadow: 0 0 0 3px rgba(242, 154, 174, 0.15);
+    }
+
+    .admin-input option {
+      background: #1a1030;
+      color: white;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--pink), var(--purple-light));
+      color: white;
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      font-family: "Poppins", sans-serif;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: "Poppins", sans-serif;
+      font-size: 0.8rem;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-save {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: "Poppins", sans-serif;
+      font-size: 0.8rem;
+    }
+
+    .btn-save:hover {
+      background: rgba(34, 197, 94, 0.3);
+    }
+
+    /* Toast notification */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: rgba(30, 20, 60, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 14px 22px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      z-index: 9999;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.35s cubic-bezier(.175, .885, .32, 1.275);
+      max-width: 340px;
+      backdrop-filter: blur(20px);
+    }
+
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    #toast.success {
+      border-left: 4px solid #4ade80;
+    }
+
+    #toast.error {
+      border-left: 4px solid #f87171;
+    }
+
+    #toast.info {
+      border-left: 4px solid var(--purple-light);
+    }
+
+    /* Upload progress */
+    .upload-progress {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .upload-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--pink), var(--purple-light));
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 12px;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    /* Image preview */
+    .img-preview {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Login card */
+    .login-card {
+      max-width: 440px;
+      margin: 80px auto;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      backdrop-filter: blur(20px);
+    }
+  </style>
+</head>
+
+<body class="gradient-bg min-h-screen">
+
+  <div id="toast"></div>
+
+  <!-- Background decorative shapes -->
+  <div class="floating-shape w-96 h-96 bg-purple-light top-10 left-5 animate-float"></div>
+  <div class="floating-shape w-80 h-80 bg-pink top-1/2 right-10 animate-float-slow"></div>
+  <div class="floating-shape w-72 h-72 bg-purple bottom-20 left-1/4 animate-float-reverse"></div>
+
+  <!-- NAV -->
+  <nav class="sticky top-0 z-50 glass-card py-4 px-6 md:px-10">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="#" onclick="navigateTo('home')"
+        class="text-xl md:text-2xl font-montserrat font-bold gradient-text">MANIC</a>
+      <div class="hidden md:flex space-x-8">
+        <a href="#" onclick="navigateTo('home')" class="text-white hover:text-pink transition-colors">Home</a>
+        <a href="#" onclick="navigateTo('shop')" class="text-white hover:text-pink transition-colors">Shop</a>
+        <a href="#" id="adminNavLink" onclick="handleAdminNav()"
+          class="text-white hover:text-pink transition-colors">Admin</a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="logoutBtn" onclick="handleLogout()"
+          class="hidden text-sm text-red-400 hover:text-red-300 transition-colors border border-red-400/30 rounded-lg px-3 py-1">
+          <i class="ph ph-sign-out mr-1"></i>Logout
+        </button>
+        <button class="relative" onclick="navigateTo('cart')">
+          <i class="ph ph-shopping-cart text-2xl text-white"></i>
+          <span class="cart-badge hidden" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container mx-auto px-4 md:px-10 py-8 relative z-10">
+
+    <!-- ======================== LOGIN PAGE ======================== -->
+    <section id="login" class="page-transition hidden">
+      <div class="login-card">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-montserrat font-bold gradient-text mb-2">MANIC</h1>
+          <p class="text-gray-400 text-sm">Admin Portal — Authorized Access Only</p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Admin Username</label>
+            <input id="loginUsername" type="text" class="admin-input" placeholder="Enter your username"
+              autocomplete="username" />
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Password</label>
+            <div class="relative">
+              <input id="loginPassword" type="password" class="admin-input pr-12" placeholder="••••••••"
+                autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()" />
+              <button type="button" onclick="togglePw('loginPassword','eyePw')"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                <i id="eyePw" class="ph ph-eye text-lg"></i>
+              </button>
+            </div>
+          </div>
+          <p id="loginError" class="text-red-400 text-sm hidden"></p>
+          <button id="loginBtn" onclick="doLogin()" class="btn-primary w-full mt-2">
+            <i class="ph ph-lock-open mr-2"></i>Sign In
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================== ADMIN DASHBOARD ======================== -->
+    <section id="admin" class="page-transition hidden">
+
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+        <div>
+          <h2 class="text-3xl font-bold">Admin Dashboard</h2>
+          <div class="flex items-center gap-3 mt-1">
+            <p class="text-gray-400 text-sm" id="adminEmailLabel"></p>
+            <button onclick="checkSupabaseConnection()"
+              class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded transition-colors text-gray-400">
+              <i class="ph ph-activity mr-1"></i>Check Connection
+            </button>
+          </div>
+        </div>
+        <button onclick="openAddModal()" class="btn-primary flex items-center gap-2">
+          <i class="ph ph-plus-circle text-xl"></i> Add New Product
+        </button>
+      </div>
+
+      <!-- Products Table -->
+      <div class="glass-card rounded-2xl overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-white/10">
+            <tr>
+              <th class="p-4 text-sm text-gray-300 font-semibold">Image</th>
+              <th class="p-4 text-sm text-gray-300 font-semibold">Name</th>
+              <th class="p-4 text-sm text-gray-300 font-semibold">Category</th>
+              <th class="p-4 text-sm text-gray-300 font-semibold">Price (₹)</th>
+              <th class="p-4 text-sm text-gray-300 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminProductList">
+            <tr>
+              <td colspan="5" class="p-8 text-center text-gray-400">
+                <i class="ph ph-spinner animate-spin text-3xl block mb-2"></i>
+                Loading products…
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================== HOME PAGE ======================== -->
+    <section id="home" class="page-transition active">
+      <div class="rounded-3xl overflow-hidden mb-16 relative h-[400px] md:h-[500px] flex items-center">
+        <div class="absolute inset-0 z-0">
+          <img src="https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80"
+            class="w-full h-full object-cover opacity-60" />
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo/80 to-transparent"></div>
+        </div>
+        <div class="relative z-10 px-6 py-10 md:p-10 max-w-2xl text-center md:text-left">
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-montserrat font-bold mb-4">MANIC <span
+              class="gradient-text">CORE</span></h1>
+          <p class="text-base md:text-lg mb-8">Update your style with our latest drops. Managed by you, worn by the
+            bold.</p>
+          <button onclick="navigateTo('shop')"
+            class="bg-gradient-to-r from-pink to-purple-light text-white font-bold py-3 px-8 rounded-full">
+            SHOP NOW
+          </button>
+        </div>
+      </div>
+      <h2 class="text-3xl font-bold mb-10">Trending Now</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="trendingGrid">
+        <!-- Skeleton loaders -->
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+      </div>
+    </section>
+
+    <!-- ======================== SHOP PAGE ======================== -->
+    <section id="shop" class="page-transition hidden">
+      <h2 class="text-3xl font-bold mb-10">All Products</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="shopGrid">
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+        <div class="skeleton h-64 rounded-2xl"></div>
+      </div>
+    </section>
+
+    <!-- ======================== CART PAGE ======================== -->
+    <section id="cart" class="page-transition hidden text-center py-20">
+      <h2 class="text-3xl font-bold mb-4">Your Cart</h2>
+      <p class="text-gray-400">Cart functionality syncs with product updates.</p>
+      <button onclick="navigateTo('shop')" class="mt-6 text-pink underline">Back to Shop</button>
+    </section>
+
+    <!-- ======================== CHECKOUT PAGE ======================== -->
+    <section id="checkout" class="page-transition hidden py-10">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold mb-8">Secure Checkout</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Left: Product Details -->
+          <div class="glass-card p-6 rounded-2xl">
+            <h3 class="text-xl font-bold mb-4 border-b border-white/10 pb-2">Order Summary</h3>
+            <div class="flex gap-4 items-center mb-6">
+              <img id="checkoutImg" src="" class="w-24 h-24 object-cover rounded-xl" />
+              <div>
+                <h4 id="checkoutName" class="font-bold text-lg">Product Name</h4>
+                <p id="checkoutCategory" class="text-gray-400 text-sm">Category</p>
+                <p class="text-xl font-bold gradient-text mt-1">₹<span id="checkoutPrice">0</span></p>
+              </div>
+            </div>
+
+            <div class="space-y-3 text-sm text-gray-300">
+              <div class="flex justify-between items-center">
+                <span>Quantity</span>
+                <div class="flex items-center gap-3 bg-white/5 rounded-lg p-1">
+                  <button onclick="updateCheckoutQty(-1)"
+                    class="w-8 h-8 rounded-md bg-white/10 hover:bg-white/20 transition-colors">-</button>
+                  <span id="checkoutQty" class="font-bold w-4 text-center">1</span>
+                  <button onclick="updateCheckoutQty(1)"
+                    class="w-8 h-8 rounded-md bg-white/10 hover:bg-white/20 transition-colors">+</button>
+                </div>
+              </div>
+              <div class="flex justify-between border-t border-white/10 pt-3">
+                <span>Subtotal</span>
+                <span>₹<span id="checkoutSubtotal">0</span></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Shipping</span>
+                <span>₹<span id="checkoutShipping">50</span></span>
+              </div>
+              <div class="flex justify-between border-t border-white/10 pt-3 text-lg font-bold text-white">
+                <span>Total Due</span>
+                <span class="gradient-text">₹<span id="checkoutTotal">0</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Payment -->
+          <div class="glass-card p-6 rounded-2xl flex flex-col">
+            <h3 class="text-xl font-bold mb-4 border-b border-white/10 pb-2">Payment Method</h3>
+
+            <div class="space-y-3 flex-grow">
+              <label
+                class="flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
+                <input type="radio" name="paymentMethod" value="upi" checked class="accent-pink" />
+                <i class="ph ph-qr-code text-2xl text-purple-light"></i>
+                <span class="font-medium">UPI / QR Code</span>
+              </label>
+              <label
+                class="flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
+                <input type="radio" name="paymentMethod" value="card" class="accent-pink" />
+                <i class="ph ph-credit-card text-2xl text-purple-light"></i>
+                <span class="font-medium">Credit / Debit Card</span>
+              </label>
+              <label
+                class="flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
+                <input type="radio" name="paymentMethod" value="cod" class="accent-pink" />
+                <i class="ph ph-money text-2xl text-pink"></i>
+                <span class="font-medium">Cash on Delivery</span>
+              </label>
+            </div>
+
+            <button id="payBtn" onclick="processPayment()" class="btn-primary w-full mt-6 py-4 text-lg">
+              Order Now via WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================== BILL RECEIPT ======================== -->
+    <section id="receipt" class="page-transition hidden py-10 md:py-20 text-center">
+      <div class="max-w-md mx-auto glass-card p-6 md:p-8 rounded-3xl border border-green-500/30">
+        <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="ph ph-check-circle text-5xl text-green-400"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-white mb-2">Order Placed Successfully!</h2>
+        <p class="text-gray-400 mb-8">Thank you for shopping with MANIC.</p>
+
+        <div class="bg-black/30 rounded-xl p-6 text-left mb-8 space-y-2 text-sm">
+          <p class="flex justify-between"><span class="text-gray-400">Order ID:</span> <span
+              class="font-mono">#MNC-<span id="receiptId"></span></span></p>
+          <p class="flex justify-between"><span class="text-gray-400">Date:</span> <span id="receiptDate"></span></p>
+          <p class="flex justify-between"><span class="text-gray-400">Payment:</span> <span id="receiptMethod"
+              class="capitalize"></span></p>
+          <div class="border-t border-white/10 my-3 pt-3"></div>
+          <p class="flex justify-between font-bold text-lg"><span class="text-gray-300">Total Amount:</span> <span
+              class="gradient-text">₹<span id="receiptAmount"></span></span></p>
+        </div>
+
+        <button onclick="navigateTo('home')" class="btn-primary w-full shadow-[0_0_20px_rgba(242,154,174,0.3)]">Continue
+          Shopping</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================== FOOTER ======================== -->
+  <footer class="border-t border-gray-800 mt-20 py-10 px-6 text-center">
+    <div class="container mx-auto">
+      <h3 class="text-xl font-bold gradient-text mb-4">MANIC</h3>
+      <div class="flex justify-center space-x-6 mb-6">
+        <a href="#" onclick="navigateTo('home')" class="text-gray-400 hover:text-white transition-colors">Home</a>
+        <a href="#" onclick="navigateTo('shop')" class="text-gray-400 hover:text-white transition-colors">Shop</a>
+        <a href="#" onclick="handleAdminNav()" class="text-pink hover:text-purple-light transition-colors">Admin
+          Panel</a>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-gray-400 text-sm mb-6">
+        <a href="https://wa.me/919750164200" target="_blank"
+          class="hover:text-pink transition-colors flex items-center gap-2 group">
+          <i class="ph ph-whatsapp-logo text-xl group-hover:scale-110 transition-transform"></i> +91 9750164200
+        </a>
+        <span class="hidden md:inline text-white/10">•</span>
+        <a href="mailto:muruganmanic1@gmail.com"
+          class="hover:text-pink transition-colors flex items-center gap-2 group">
+          <i class="ph ph-envelope-simple text-xl group-hover:scale-110 transition-transform"></i>
+          muruganmanic1@gmail.com
+        </a>
+        <span class="hidden md:inline text-white/10">•</span>
+        <a href="https://www.instagram.com/manic_menswear?igsh=MXRuNmd4Y2N6bjk2Mw==" target="_blank"
+          class="hover:text-pink transition-colors flex items-center gap-2 group">
+          <i class="ph ph-instagram-logo text-xl group-hover:scale-110 transition-transform"></i> @manic_menswear
+        </a>
+      </div>
+
+      <p class="text-gray-500 text-sm">© 2025 MANIC Premium Clothing. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- ======================== ADD / EDIT PRODUCT MODAL ======================== -->
+  <div id="productModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+    <!-- Modal Card -->
+    <div class="relative z-10 w-full max-w-lg bg-[#1a1030] border border-white/10 rounded-2xl p-8 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 id="modalTitle" class="text-xl font-bold">Add New Product</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl leading-none">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <input type="hidden" id="modalProductId" />
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Product Name *</label>
+          <input id="modalName" type="text" class="admin-input" placeholder="e.g. Urban Oversized Hoodie" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Category *</label>
+            <select id="modalCategory" class="admin-input">
+              <option value="formal wear">formal wear</option>
+              <option value="casual wear">casual wear</option>
+              <option value="sportswear/activewear">sportswear/activewear</option>
+              <option value="ethnic wear">ethnic wear</option>
+              <option value="nightwear">nightwear</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Price (₹) *</label>
+            <input id="modalPrice" type="number" step="1" min="0" class="admin-input" placeholder="899" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Description</label>
+          <textarea id="modalDescription" class="admin-input" rows="3"
+            placeholder="Brief product description…"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Product Image</label>
+          <div id="currentImageWrapper" class="hidden mb-2 flex items-center gap-3">
+            <img id="currentImageThumb" class="img-preview" src="" alt="Current image" />
+            <span class="text-xs text-gray-400">Current image.</span>
+          </div>
+
+          <div class="glass-card p-4 rounded-xl mt-2 border border-white/10">
+            <label class="block text-xs text-gray-400 mb-1">Option 1: Image URL (Easy)</label>
+            <input id="modalImageUrl" type="url" class="admin-input mb-3 bg-black/20"
+              placeholder="https://example.com/image.jpg" oninput="previewUrlImage(this.value)" />
+
+            <div class="flex items-center gap-2 mb-3">
+              <div class="h-px bg-white/10 flex-1"></div>
+              <span class="text-xs text-gray-500">OR</span>
+              <div class="h-px bg-white/10 flex-1"></div>
+            </div>
+            <label class="block text-xs text-gray-400 mb-1">Option 2: Upload File (Requires Supabase Setup)</label>
+            <input id="modalImageFile" type="file" accept="image/*" class="admin-input bg-black/20"
+              onchange="previewNewImage(this)" />
+          </div>
+
+          <div id="newImagePreviewWrapper" class="hidden mt-3">
+            <p class="text-xs text-gray-400 mb-1">New Image Preview:</p>
+            <img id="newImagePreview" class="img-preview" src="" alt="New image preview" />
+          </div>
+          <div class="upload-progress hidden mt-2" id="uploadProgress">
+            <div class="upload-progress-bar" id="uploadProgressBar"></div>
+          </div>
+        </div>
+
+        <p id="modalError" class="text-red-400 text-sm hidden"></p>
+
+        <button id="modalSaveBtn" onclick="saveProduct()" class="btn-primary w-full mt-2">
+          <i class="ph ph-floppy-disk mr-2"></i>Save Product
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MAIN SCRIPT ======================== -->
+  <script>
+    // ══════════════════════════════════════════════════════════════
+    // 🔑  CONFIGURATION — Replace with your Supabase project values
+    //     Dashboard → Settings → API
+    // ══════════════════════════════════════════════════════════════
+    const SUPABASE_URL = 'https://qfldgcyexwednhiikoos.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmbGRnY3lleHdlZG5oaWlrb29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjAxNTcsImV4cCI6MjA4NzU5NjE1N30.E6Edg-znxNqY579MTXGla7ZilRTQw4n49tjDu4YpPk8';
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // ── State ─────────────────────────────────────────────────────
+    window.currentUser = null;
+    window.allProducts = [];
+    window.editingId = null; // uuid of product being edited
+
+    // ══════════════════════════════════════════════════════════════
+    // INIT
+    // ══════════════════════════════════════════════════════════════
+    window.onload = async () => {
+      // Restore Supabase auth session from localStorage automatically
+      const { data: { session } } = await sb.auth.getSession();
+      currentUser = session?.user ?? null;
+      updateNavAuthUI();
+      await loadProducts();
+    };
+
+    // ══════════════════════════════════════════════════════════════
+    // AUTH HELPERS
+    // ══════════════════════════════════════════════════════════════
+    async function doLogin() {
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginBtn');
+
+      errEl.classList.add('hidden');
+
+      if (!username || !password) {
+        showLoginError('Please enter your username and password.');
+        return;
+      }
+
+      console.log('🚀 Attempting hardcoded login for:', username);
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-circle-notch animate-spin mr-2"></i>Signing in…';
+
+      // Simulate a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Hardcoded Admin Credentials
+      if (username === 'muruganbabu' && password === 'KMBRSVNPLA') {
+        console.log('✅ Login successful!');
+        currentUser = {
+          id: 'admin-uuid',
+          email: 'admin@manic.internal',
+          _username: 'muruganbabu'
+        };
+
+        updateNavAuthUI();
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('loginUsername').value = '';
+        showToast('Welcome back, ' + username + '! 👋', 'success');
+        navigateTo('admin');
+        renderAdminTable();
+        document.getElementById('adminEmailLabel').textContent = '🔐 Logged in as ' + username;
+      } else {
+        console.error('❌ Login failed: Invalid credentials');
+        showLoginError('Invalid admin username or password.');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ph ph-lock-open mr-2"></i>Sign In';
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      currentUser = null;
+      updateNavAuthUI();
+      navigateTo('home');
+      showToast('Logged out successfully.', 'info');
+    }
+
+    function updateNavAuthUI() {
+      const logoutBtn = document.getElementById('logoutBtn');
+      logoutBtn.classList.toggle('hidden', !currentUser);
+    }
+
+    function handleAdminNav() {
+      if (currentUser) {
+        navigateTo('admin');
+        renderAdminTable();
+        const displayName = currentUser._username || 'Admin';
+        document.getElementById('adminEmailLabel').textContent = '🔐 Logged in as ' + displayName;
+      } else {
+        navigateTo('login');
+      }
+    }
+
+    function showLoginError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function togglePw(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'ph ph-eye-slash text-lg';
+      } else {
+        input.type = 'password';
+        icon.className = 'ph ph-eye text-lg';
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PRODUCTS — FETCH
+    // ══════════════════════════════════════════════════════════════
+    async function loadProducts() {
+      const { data, error } = await sb
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        showToast('Could not load products. Check your Supabase keys.', 'error');
+        return;
+      }
+
+      allProducts = data;
+      renderShopGrids();
+      if (currentUser) renderAdminTable();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PRODUCTS — RENDER (Public Shop)
+    // ══════════════════════════════════════════════════════════════
+    function productCardHTML(p) {
+      const img = p.image_url || 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=400&q=80';
+      const desc = p.description ? `<p class="text-gray-400 text-xs mb-3 line-clamp-2">${escHtml(p.description)}</p>` : '';
+      return `
+          <div class="glass-card rounded-2xl p-4 product-card card-hover flex flex-col">
+            <div class="overflow-hidden rounded-xl mb-4">
+              <img src="${escHtml(img)}" class="w-full h-48 object-cover product-image" alt="${escHtml(p.name)}" loading="lazy"
+                onerror="this.src='https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=400&q=80'">
+            </div>
+            <h3 class="font-bold text-lg mb-1 truncate">${escHtml(p.name)}</h3>
+            <p class="text-gray-400 text-sm mb-1">${escHtml(p.category)}</p>
+            ${desc}
+            <div class="flex justify-between items-center mt-auto pt-2">
+              <span class="text-xl font-bold gradient-text">₹${Number(p.price).toLocaleString('en-IN')}</span>
+              <button onclick="window.openCheckout('${p.id}')" class="bg-pink px-4 py-2 rounded-lg hover:bg-opacity-80 transition-colors font-bold text-sm text-white" title="Buy Now">
+                Buy Now
+              </button>
+            </div>
+          </div>`;
+    }
+
+    function renderShopGrids() {
+      const trending = document.getElementById('trendingGrid');
+      const shop = document.getElementById('shopGrid');
+      const html = allProducts.map(productCardHTML).join('');
+      if (trending) trending.innerHTML = html || '<p class="text-gray-400 col-span-4 text-center py-10">No products yet.</p>';
+      if (shop) shop.innerHTML = html || '<p class="text-gray-400 col-span-4 text-center py-10">No products yet.</p>';
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ADMIN — RENDER TABLE
+    // ══════════════════════════════════════════════════════════════
+    function renderAdminTable() {
+      const list = document.getElementById('adminProductList');
+      if (!list) return;
+      if (allProducts.length === 0) {
+        list.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400">No products yet. Add your first product!</td></tr>`;
+        return;
+      }
+      list.innerHTML = allProducts.map(p => {
+        const img = p.image_url || '';
+        return `
+            <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+              <td class="p-4">
+                ${img ? `<img src="${escHtml(img)}" class="img-preview" alt="${escHtml(p.name)}" loading="lazy"
+                  onerror="this.src='https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=80&q=60'">` : '<div class="img-preview skeleton"></div>'}
+              </td>
+              <td class="p-4">
+                <div class="font-semibold">${escHtml(p.name)}</div>
+                <div class="text-gray-400 text-xs mt-0.5 max-w-xs truncate">${escHtml(p.description || '—')}</div>
+              </td>
+              <td class="p-4">
+                <span class="text-xs bg-purple/30 border border-purple/40 text-purple-light px-2 py-1 rounded-full">${escHtml(p.category)}</span>
+              </td>
+              <td class="p-4 font-bold">₹${Number(p.price).toLocaleString('en-IN')}</td>
+              <td class="p-4">
+                <div class="flex gap-2">
+                  <button class="btn-save" onclick="openEditModal('${p.id}')"><i class="ph ph-pencil mr-1"></i>Edit</button>
+                  <button class="btn-danger" onclick="deleteProduct('${p.id}', '${escAttr(img)}')"><i class="ph ph-trash mr-1"></i>Delete</button>
+                </div>
+              </td>
+            </tr>`;
+      }).join('');
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // MODAL — ADD / EDIT
+    // ══════════════════════════════════════════════════════════════
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = 'Add New Product';
+      document.getElementById('modalProductId').value = '';
+      document.getElementById('modalName').value = '';
+      document.getElementById('modalPrice').value = '';
+      document.getElementById('modalDescription').value = '';
+      document.getElementById('modalCategory').value = 'formal wear';
+      document.getElementById('modalImageFile').value = '';
+      document.getElementById('modalImageUrl').value = '';
+      document.getElementById('modalError').classList.add('hidden');
+      document.getElementById('currentImageWrapper').classList.add('hidden');
+      document.getElementById('newImagePreviewWrapper').classList.add('hidden');
+      document.getElementById('uploadProgress').classList.add('hidden');
+      showModal();
+    }
+
+    function openEditModal(id) {
+      // Use loose equality (==) for ID comparison
+      const p = allProducts.find(x => x.id == id);
+      if (!p) {
+        console.error('❌ Edit failed: Product not found for ID:', id);
+        showToast('Error: Product not found.', 'error');
+        return;
+      }
+      editingId = id;
+      document.getElementById('modalTitle').textContent = 'Edit Product';
+      document.getElementById('modalProductId').value = p.id;
+      document.getElementById('modalName').value = p.name;
+      document.getElementById('modalPrice').value = p.price;
+      document.getElementById('modalDescription').value = p.description || '';
+      document.getElementById('modalCategory').value = p.category;
+      document.getElementById('modalImageFile').value = '';
+      document.getElementById('modalImageUrl').value = p.image_url || '';
+      document.getElementById('modalError').classList.add('hidden');
+      document.getElementById('newImagePreviewWrapper').classList.add('hidden');
+      document.getElementById('uploadProgress').classList.add('hidden');
+
+      // Show existing image if available
+      if (p.image_url) {
+        document.getElementById('currentImageThumb').src = p.image_url;
+        document.getElementById('currentImageWrapper').classList.remove('hidden');
+      } else {
+        document.getElementById('currentImageWrapper').classList.add('hidden');
+      }
+      showModal();
+    }
+
+    function showModal() { document.getElementById('productModal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+    function previewNewImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      document.getElementById('modalImageUrl').value = ''; // clear url if file picked
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('newImagePreview').src = e.target.result;
+        document.getElementById('newImagePreviewWrapper').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewUrlImage(url) {
+      if (!url) {
+        document.getElementById('newImagePreviewWrapper').classList.add('hidden');
+        return;
+      }
+      document.getElementById('modalImageFile').value = ''; // clear file if url typed
+      document.getElementById('newImagePreview').src = url;
+      document.getElementById('newImagePreviewWrapper').classList.remove('hidden');
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PRODUCTS — SAVE (Add + Edit)
+    // ══════════════════════════════════════════════════════════════
+    async function saveProduct() {
+      const name = document.getElementById('modalName').value.trim();
+      const price = parseFloat(document.getElementById('modalPrice').value);
+      const category = document.getElementById('modalCategory').value;
+      const desc = document.getElementById('modalDescription').value.trim();
+      const fileInput = document.getElementById('modalImageFile');
+      const file = fileInput.files[0];
+      const errEl = document.getElementById('modalError');
+      const btn = document.getElementById('modalSaveBtn');
+
+      errEl.classList.add('hidden');
+
+      if (!name) { showModalError('Product name is required.'); return; }
+      if (isNaN(price) || price < 0) { showModalError('Please enter a valid price.'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-circle-notch animate-spin mr-2"></i>Saving…';
+
+      try {
+        let imageUrl = document.getElementById('modalImageUrl').value.trim() || null;
+
+        // Upload new image if a file was selected
+        if (file) {
+          const { url, uploadError } = await uploadImage(file);
+          if (uploadError) {
+            console.error('Image upload failed:', uploadError);
+
+            let errorMsg = 'Image upload failed: ' + uploadError + '. ';
+            if (uploadError.includes('fetch')) {
+              errorMsg += 'Please use a local server (Live Server) and check your internet.';
+            } else if (uploadError.toLowerCase().includes('row-level security') || uploadError.toLowerCase().includes('policy')) {
+              errorMsg += 'Your Supabase "product-images" bucket does not allow public uploads. Please run the provided SQL in Supabase or use Option 1 (Image URL) instead.';
+            }
+
+            showModalError(errorMsg);
+
+            // Optional: Let user save without the new image if they confirm
+            if (confirm('Image upload failed!\n\nSupabase Storage might require SQL setup. Do you want to save the product details WITHOUT the uploaded image? (You can use the Image URL option instead)')) {
+              // Proceed with existing or null imageUrl
+            } else {
+              btn.disabled = false;
+              btn.innerHTML = '<i class="ph ph-floppy-disk mr-2"></i>Save Product';
+              return;
+            }
+          } else {
+            imageUrl = url;
+          }
+        } else if (!imageUrl && editingId) {
+          // If no new file and no new URL, keep existing
+          const existing = allProducts.find(x => x.id === editingId);
+          imageUrl = existing?.image_url || null;
+        }
+
+        const payload = {
+          name,
+          category,
+          price,
+          description: desc,
+          image_url: imageUrl
+        };
+
+        console.log('📦 Saving payload to Supabase:', payload);
+
+        let result;
+        if (editingId) {
+          result = await sb.from('products').update(payload).eq('id', editingId);
+        } else {
+          result = await sb.from('products').insert(payload);
+        }
+
+        if (result.error) {
+          console.error('Supabase Database Error:', result.error);
+          throw new Error('Database error: ' + result.error.message);
+        }
+
+        showToast('Product saved successfully! ✅', 'success');
+        closeModal();
+        await loadProducts();
+
+      } catch (err) {
+        console.error('Save error:', err);
+        showModalError(err.message || 'An error occurred while saving to the database.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph ph-floppy-disk mr-2"></i>Save Product';
+        document.getElementById('uploadProgress').classList.add('hidden');
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // IMAGE UPLOAD TO SUPABASE STORAGE
+    // ══════════════════════════════════════════════════════════════
+    async function uploadImage(file) {
+      const progress = document.getElementById('uploadProgress');
+      const progressBar = document.getElementById('uploadProgressBar');
+
+      // Validate file type and size
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+      if (!allowedTypes.includes(file.type)) {
+        return { url: null, uploadError: 'Only JPEG, PNG, WebP, GIF, or AVIF images are allowed.' };
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        return { url: null, uploadError: 'Image must be under 5MB.' };
+      }
+
+      progress.classList.remove('hidden');
+      progressBar.style.width = '20%';
+
+      // Unique filename: timestamp + sanitised original name
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_').replace(/\s+/g, '_');
+      const path = `products/${Date.now()}_${safeName}`;
+
+      progressBar.style.width = '50%';
+
+      try {
+        const { data, error } = await sb.storage
+          .from('product-images')
+          .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+
+        progressBar.style.width = '90%';
+
+        if (error) {
+          console.error('Storage upload error:', error);
+          progress.classList.add('hidden');
+          return { url: null, uploadError: error.message };
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = sb.storage
+          .from('product-images')
+          .getPublicUrl(data.path);
+
+        progressBar.style.width = '100%';
+        return { url: publicUrl, uploadError: null };
+      } catch (err) {
+        let msg = err.message || 'Network error';
+        if (msg === 'Failed to fetch') {
+          msg = 'Failed to fetch. Tip: If you are opening this HTML file directly from your computer (file://), try using a local server (like VS Code Live Server) to avoid CORS blocks.';
+        }
+        return { url: null, uploadError: msg };
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PRODUCTS — DELETE
+    // ══════════════════════════════════════════════════════════════
+    async function deleteProduct(id, imageUrl) {
+      if (!confirm('Are you sure you want to permanently delete this product?')) return;
+
+      const { error } = await sb.from('products').delete().eq('id', id);
+      if (error) {
+        showToast('Failed to delete product: ' + error.message, 'error');
+        return;
+      }
+
+      // Best-effort delete image from storage
+      if (imageUrl && imageUrl.includes('product-images')) {
+        try {
+          const urlObj = new URL(imageUrl);
+          const pathParts = urlObj.pathname.split('/product-images/');
+          if (pathParts.length > 1) {
+            await sb.storage.from('product-images').remove([pathParts[1]]);
+          }
+        } catch (e) { /* ignore storage cleanup errors */ }
+      }
+
+      showToast('Product deleted.', 'info');
+      await loadProducts();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // CHECKOUT & BILLING LOGIC
+    // ══════════════════════════════════════════════════════════════
+    window.currentCheckoutProduct = null;
+    window.currentCheckoutQty = 1;
+    const shippingFee = 50;
+
+    window.openCheckout = function (id) {
+      console.log('🛒 [CRITICAL DEBUG] openCheckout triggered for:', id);
+      // alert('Checkout button clicked for ID: ' + id); // Temporary visible alert
+
+      if (!window.allProducts || window.allProducts.length === 0) {
+        console.warn('⚠️ [DEBUG] allProducts is empty, re-loading...');
+        loadProducts().then(() => {
+          console.log('🔄 [DEBUG] Products reloaded, retrying checkout...');
+          window.openCheckout(id);
+        });
+        return;
+      }
+
+      // Try multiple comparison strategies
+      window.currentCheckoutProduct = window.allProducts.find(p => String(p.id) === String(id)) ||
+        window.allProducts.find(p => p.id == id);
+
+      if (!window.currentCheckoutProduct) {
+        console.error('❌ [DEBUG] Product not found for ID:', id);
+        alert('Product not found in current inventory. Please refresh the page.');
+        return;
+      }
+
+      console.log('✅ [DEBUG] Found product:', window.currentCheckoutProduct.name);
+      window.currentCheckoutQty = 1;
+
+      try {
+        const setEl = (id, val, attr = 'textContent') => {
+          const el = document.getElementById(id);
+          if (el) el[attr] = val;
+        };
+
+        setEl('checkoutImg', window.currentCheckoutProduct.image_url || '', 'src');
+        setEl('checkoutName', window.currentCheckoutProduct.name);
+        setEl('checkoutCategory', window.currentCheckoutProduct.category);
+        setEl('checkoutPrice', Number(window.currentCheckoutProduct.price).toLocaleString('en-IN'));
+
+        const upiRadio = document.querySelector('input[name="paymentMethod"][value="upi"]');
+        if (upiRadio) upiRadio.checked = true;
+
+        updateCheckoutTotals();
+
+        console.log('🚀 [DEBUG] Calling navigateTo(checkout)');
+        navigateTo('checkout');
+      } catch (err) {
+        console.error('🔥 [DEBUG] UI Update failed:', err);
+        alert('Error preparing checkout: ' + err.message);
+      }
+    };
+
+    function updateCheckoutQty(change) {
+      currentCheckoutQty += change;
+      if (currentCheckoutQty < 1) currentCheckoutQty = 1;
+      if (currentCheckoutQty > 10) currentCheckoutQty = 10;
+      updateCheckoutTotals();
+    }
+
+    function updateCheckoutTotals() {
+      const qtyEl = document.getElementById('checkoutQty');
+      const subEl = document.getElementById('checkoutSubtotal');
+      const totEl = document.getElementById('checkoutTotal');
+
+      if (qtyEl) qtyEl.textContent = window.currentCheckoutQty;
+
+      const subtotal = window.currentCheckoutProduct.price * window.currentCheckoutQty;
+      const total = subtotal + shippingFee;
+
+      if (subEl) subEl.textContent = subtotal.toLocaleString('en-IN');
+      if (totEl) totEl.textContent = total.toLocaleString('en-IN');
+    }
+
+    function processPayment() {
+      const btn = document.getElementById('payBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-circle-notch animate-spin mr-2"></i>Placing Order...';
+
+      // Generate Order Data
+      const orderId = Math.floor(100000 + Math.random() * 900000);
+      const date = new Date().toLocaleDateString('en-IN');
+      const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+      const total = (currentCheckoutProduct.price * currentCheckoutQty) + shippingFee;
+      const product = currentCheckoutProduct.name;
+      const qty = currentCheckoutQty;
+
+      // Update Receipt UI
+      document.getElementById('receiptId').textContent = orderId;
+      document.getElementById('receiptDate').textContent = date;
+      document.getElementById('receiptMethod').textContent = method === 'cod' ? 'Cash on Delivery' : method.toUpperCase();
+      document.getElementById('receiptAmount').textContent = total.toLocaleString('en-IN');
+
+      // Generate WhatsApp message
+      const message = `*Order Placed Successfully!* 🛍️\n\n` +
+        `*Order ID:* #MNC-${orderId}\n` +
+        `*Date:* ${date}\n` +
+        `*Product:* ${product}\n` +
+        `*Quantity:* ${qty}\n` +
+        `*Total Amount:* ₹${total.toLocaleString('en-IN')}\n` +
+        `*Payment Method:* ${method === 'cod' ? 'Cash on Delivery' : method.toUpperCase()}\n\n` +
+        `*Customer Interest:* I want to place this order!`;
+
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/919750164200?text=${encodedMessage}`;
+
+      // Show receipt first
+      navigateTo('receipt');
+
+      // Open WhatsApp after a brief moment to ensure navigation happens
+      setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
+        btn.disabled = false;
+        btn.innerHTML = 'Order Now via WhatsApp';
+        showToast('Order placed! Redirecting to WhatsApp...', 'success');
+      }, 500);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // NAVIGATION
+    // ══════════════════════════════════════════════════════════════
+    window.navigateTo = function (pageId) {
+      console.log('🏁 [DEBUG] window.navigateTo called for:', pageId);
+
+      const target = document.getElementById(pageId);
+      if (!target) {
+        console.error('❌ [DEBUG] Navigation target NOT FOUND in DOM:', pageId);
+        alert('Developer Error: Page section "' + pageId + '" not found.');
+        return;
+      }
+
+      // Hide all pages forcefully
+      document.querySelectorAll('.page-transition').forEach(p => {
+        p.classList.add('hidden');
+        p.classList.remove('active');
+        p.style.display = 'none';
+      });
+
+      // Show target forcefully
+      target.classList.remove('hidden');
+      target.style.display = 'block';
+
+      // Allow DOM update then animate
+      setTimeout(() => {
+        target.classList.add('active');
+        console.log('✨ [DEBUG] Page visible and active:', pageId);
+      }, 50);
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // ══════════════════════════════════════════════════════════════
+    // UTILITIES
+    // ══════════════════════════════════════════════════════════════
+    async function checkSupabaseConnection() {
+      showToast('Testing Supabase connection...', 'info');
+      console.log('🔍 Starting Supabase diagnostics...');
+
+      try {
+        // 1. Test Database
+        const start = Date.now();
+        const { data, error: dbError } = await sb.from('products').select('count');
+        const dbTime = Date.now() - start;
+
+        if (dbError) {
+          console.error('❌ Database error:', dbError);
+          showToast('Database Error: ' + dbError.message, 'error');
+        } else {
+          console.log(`✅ Database reachable (${dbTime}ms)`);
+          showToast('Database connection is OK! ✅', 'success');
+        }
+
+        // 2. Test Storage
+        const { data: buckets, error: storageError } = await sb.storage.listBuckets();
+        if (storageError) {
+          console.error('❌ Storage error:', storageError);
+          showToast('Storage Error: ' + storageError.message, 'error');
+        } else {
+          const hasBucket = buckets.some(b => b.id === 'product-images');
+          console.log('✅ Storage reachable. Buckets:', buckets.map(b => b.id));
+          if (!hasBucket) {
+            showToast('Warning: "product-images" bucket not found!', 'error');
+          } else {
+            showToast('All Supabase systems are OK! 🎉', 'success');
+          }
+        }
+      } catch (err) {
+        console.error('🔥 Severe connection failure:', err);
+        if (err.message === 'Failed to fetch') {
+          showToast('Fatal Error: Cannot reach Supabase. Check your Internet or if the project is PAUSED.', 'error');
+          alert('STILL BLOCKED: The browser cannot reach Supabase at all. \n\n1. Ensure you are using http://127.0.0.1 (Live Server)\n2. Check if your internet has a firewall/VPN blocking it.\n3. Make sure your Supabase project is "Active" in their dashboard.');
+        } else {
+          showToast('Connection failed: ' + err.message, 'error');
+        }
+      }
+    }
+
+    function showModalError(msg) {
+      const el = document.getElementById('modalError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    let toastTimer;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `show ${type}`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escAttr(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>
