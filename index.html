@@ -66,16 +66,21 @@
     }
 
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
 
+    html,
     body {
       font-family: "Poppins", sans-serif;
       background-color: var(--dark);
       color: white;
+      margin: 0;
+      padding: 0;
+      width: 100%;
       overflow-x: hidden;
+      position: relative;
     }
 
     .gradient-bg {
@@ -326,9 +331,11 @@
   <div id="toast"></div>
 
   <!-- Background decorative shapes -->
-  <div class="floating-shape w-96 h-96 bg-purple-light top-10 left-5 animate-float"></div>
-  <div class="floating-shape w-80 h-80 bg-pink top-1/2 right-10 animate-float-slow"></div>
-  <div class="floating-shape w-72 h-72 bg-purple bottom-20 left-1/4 animate-float-reverse"></div>
+  <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+    <div class="floating-shape w-96 h-96 bg-purple-light top-10 left-5 animate-float"></div>
+    <div class="floating-shape w-80 h-80 bg-pink top-1/2 right-10 animate-float-slow"></div>
+    <div class="floating-shape w-72 h-72 bg-purple bottom-20 left-1/4 animate-float-reverse"></div>
+  </div>
 
   <!-- NAV -->
   <nav class="sticky top-0 z-50 glass-card py-4 px-6 md:px-10">
@@ -395,8 +402,12 @@
       <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h2 class="text-3xl font-bold">Admin Dashboard</h2>
-          <div class="flex items-center gap-3 mt-1">
+          <div class="flex flex-wrap items-center gap-3 mt-1">
             <p class="text-gray-400 text-sm" id="adminEmailLabel"></p>
+            <div id="protocolWarning"
+              class="hidden text-xs bg-red-500/20 border border-red-500/40 text-red-300 px-2 py-1 rounded animate-pulse">
+              <i class="ph ph-warning mr-1"></i> Running via file:// (CORS might block Supabase)
+            </div>
             <button onclick="checkSupabaseConnection()"
               class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded transition-colors text-gray-400">
               <i class="ph ph-activity mr-1"></i>Check Connection
@@ -722,6 +733,14 @@
     // INIT
     // ══════════════════════════════════════════════════════════════
     window.onload = async () => {
+      // 1. Check protocol
+      if (window.location.protocol === 'file:') {
+        console.warn('⚠️ [WARNING] Application is running via file:// protocol. Fetch requests to Supabase will likely fail due to CORS restrictions.');
+        const warn = document.getElementById('protocolWarning');
+        if (warn) warn.classList.remove('hidden');
+        showToast('Running locally via file://. Please use "Live Server" for Supabase to work.', 'error');
+      }
+
       // Restore Supabase auth session from localStorage automatically
       const { data: { session } } = await sb.auth.getSession();
       currentUser = session?.user ?? null;
@@ -1319,41 +1338,64 @@
       showToast('Testing Supabase connection...', 'info');
       console.log('🔍 Starting Supabase diagnostics...');
 
+      const protocol = window.location.protocol;
+      const results = [];
+
       try {
-        // 1. Test Database
+        // 0. Check protocol
+        if (protocol === 'file:') {
+          results.push('❌ [CRITICAL] Running via file:// protocol. Browser will block database requests.');
+        } else {
+          results.push('✅ Running via ' + protocol);
+        }
+
+        // 1. Test URL Reachability (using simple fetch)
+        try {
+          const resp = await fetch(SUPABASE_URL, { method: 'HEAD', mode: 'no-cors' });
+          results.push('✅ Supabase Server is reachable.');
+        } catch (e) {
+          results.push('❌ Cannot reach Supabase Server. Check your internet or if the project is active.');
+          throw e; // Stop here
+        }
+
+        // 2. Test Database
         const start = Date.now();
         const { data, error: dbError } = await sb.from('products').select('count');
         const dbTime = Date.now() - start;
 
         if (dbError) {
           console.error('❌ Database error:', dbError);
-          showToast('Database Error: ' + dbError.message, 'error');
+          results.push('❌ Database Error: ' + dbError.message);
+          if (dbError.message.includes('relation "products" does not exist')) {
+            results.push('💡 Fix: Run the "create table public.products" SQL in Supabase.');
+          }
         } else {
           console.log(`✅ Database reachable (${dbTime}ms)`);
-          showToast('Database connection is OK! ✅', 'success');
+          results.push(`✅ Database connection OK (${dbTime}ms).`);
         }
 
-        // 2. Test Storage
+        // 3. Test Storage
         const { data: buckets, error: storageError } = await sb.storage.listBuckets();
         if (storageError) {
-          console.error('❌ Storage error:', storageError);
-          showToast('Storage Error: ' + storageError.message, 'error');
+          results.push('❌ Storage Error: ' + storageError.message);
         } else {
           const hasBucket = buckets.some(b => b.id === 'product-images');
-          console.log('✅ Storage reachable. Buckets:', buckets.map(b => b.id));
-          if (!hasBucket) {
-            showToast('Warning: "product-images" bucket not found!', 'error');
-          } else {
-            showToast('All Supabase systems are OK! 🎉', 'success');
-          }
+          results.push('✅ Storage reachable.');
+          if (!hasBucket) results.push('❌ "product-images" bucket missing.');
         }
+
+        alert('Supabase Diagnostics:\n\n' + results.join('\n'));
+        if (!results.some(r => r.startsWith('❌'))) {
+          showToast('All systems go! 🎉', 'success');
+        }
+
       } catch (err) {
-        console.error('🔥 Severe connection failure:', err);
-        if (err.message === 'Failed to fetch') {
-          showToast('Fatal Error: Cannot reach Supabase. Check your Internet or if the project is PAUSED.', 'error');
-          alert('STILL BLOCKED: The browser cannot reach Supabase at all. \n\n1. Ensure you are using http://127.0.0.1 (Live Server)\n2. Check if your internet has a firewall/VPN blocking it.\n3. Make sure your Supabase project is "Active" in their dashboard.');
-        } else {
-          showToast('Connection failed: ' + err.message, 'error');
+        console.error('🔥 Diagnostics failed:', err);
+        const diagMsg = results.join('\n') + '\n\nError: ' + err.message;
+        alert('Diagnostics Failed:\n\n' + diagMsg);
+
+        if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+          alert('STILL BLOCKED: "Failed to fetch" usually means:\n1. You are not using Live Server (http://127.0.0.1)\n2. Your internet is blocking the connection (VPN/Firewall)\n3. Your Supabase project is "Paused".');
         }
       }
     }
